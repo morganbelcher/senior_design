@@ -3,11 +3,11 @@
 # import the necessary packages
 from imutils.video import VideoStream
 from imutils.video import FPS
+import cv2
 import face_recognition
 import imutils
 import pickle
 import time
-import cv2
 
 #Initialize 'currentname' to trigger only when a new person is identified.
 currentname = "unknown"
@@ -23,8 +23,11 @@ data = pickle.loads(open(encodingsP, "rb").read())
 # Set the ser to the followng
 # src = 0 : for the build in single web cam, could be your laptop webcam
 # src = 2 : I had to set it to 2 inorder to use the USB webcam attached to my laptop
-#vs = VideoStream(src=2,framerate=10).start()
-vs = VideoStream(usePiCamera=True).start()
+
+vs = VideoStream(src=0,framerate=10).start()
+
+#vs = VideoStream(usePiCamera=True).start()
+
 time.sleep(2.0)
 
 # start the FPS counter
