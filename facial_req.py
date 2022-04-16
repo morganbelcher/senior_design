@@ -1,6 +1,3 @@
-#! /usr/bin/python
-
-# import the necessary packages
 from imutils.video import VideoStream
 from imutils.video import FPS
 import cv2
@@ -130,6 +127,7 @@ while True:
 		attLogDF.sort_values(attLogDF.columns[0],axis=0,inplace=True)
 		# Prints data out to the CSV file
 		attLogDF.to_csv(abspath + 'FaceReqData.csv', index=False)
+		attLogDF.to_csv(abspath + "flaskserve/" + 'FaceReqData.csv', index=False)
 		
 		time.sleep(2)
 		break
