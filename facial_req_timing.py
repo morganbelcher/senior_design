@@ -1,43 +1,41 @@
-#! /usr/bin/python
-
-# import the necessary packages
 from imutils.video import VideoStream
 from imutils.video import FPS
+import cv2
 import face_recognition
 import imutils
+import os
+import datetime
+import csv
+import pandas as pd
 import pickle
 import time
-import cv2
-import requests
 
+abspath = os.path.dirname(os.path.abspath(__file__)) + "/"
 #Initialize 'currentname' to trigger only when a new person is identified.
 currentname = "unknown"
+
 #Determine faces from encodings.pickle file model created from train_model.py
 encodingsP = "encodings.pickle"
-#use this xml file
-cascade = "haarcascade_frontalface_default.xml"
-
-#function for setting up emails
-def send_message(name):
-    return requests.post(
-        "https://api.mailgun.net/v3/YOUR_DOMAIN_NAME/messages",
-        auth=("api", "YOUR_API_KEY"),
-        files = [("attachment", ("image.jpg", open("image.jpg", "rb").read()))],
-        data={"from": 'hello@example.com',
-            "to": ["YOUR_MAILGUN_EMAIL_ADDRESS"],
-            "subject": "You have a visitor",
-            "html": "<html>" + name + " is at your door.  </html>"})
 
 # load the known faces and embeddings along with OpenCV's Haar
 # cascade for face detection
 print("[INFO] loading encodings + face detector...")
 data = pickle.loads(open(encodingsP, "rb").read())
-detector = cv2.CascadeClassifier(cascade)
 
 # initialize the video stream and allow the camera sensor to warm up
-print("[INFO] starting video stream...")
-vs = VideoStream(src=0).start()
-# vs = VideoStream(usePiCamera=True).start()
+vs = VideoStream(src=0,framerate=10).start()
+
+# Create column headers
+attLog = {
+    "Name": [],
+    "Attendance Time": [],
+    "Date": [],
+	"Recognition Time":[]
+}
+
+#Creating Dataframe 
+attLogDF = pd.DataFrame(attLog)
+
 time.sleep(2.0)
 
 # start the FPS counter
@@ -45,28 +43,16 @@ fps = FPS().start()
 
 # loop over frames from the video file stream
 while True:
+	# Initial point of timing
+	initTime = time.time()
 	# grab the frame from the threaded video stream and resize it
 	# to 500px (to speedup processing)
 	frame = vs.read()
 	frame = imutils.resize(frame, width=500)
-	
-	# convert the input frame from (1) BGR to grayscale (for face
-	# detection) and (2) from BGR to RGB (for face recognition)
-	gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-	rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-	# detect faces in the grayscale frame
-	rects = detector.detectMultiScale(gray, scaleFactor=1.1, 
-		minNeighbors=5, minSize=(30, 30),
-		flags=cv2.CASCADE_SCALE_IMAGE)
-
-	# OpenCV returns bounding box coordinates in (x, y, w, h) order
-	# but we need them in (top, right, bottom, left) order, so we
-	# need to do a bit of reordering
-	boxes = [(y, x + w, y + h, x) for (x, y, w, h) in rects]
-
+	# Detect the fce boxes
+	boxes = face_recognition.face_locations(frame)
 	# compute the facial embeddings for each face bounding box
-	encodings = face_recognition.face_encodings(rgb, boxes)
+	encodings = face_recognition.face_encodings(frame, boxes)
 	names = []
 
 	# loop over the facial embeddings
@@ -75,7 +61,7 @@ while True:
 		# encodings
 		matches = face_recognition.compare_faces(data["encodings"],
 			encoding)
-		name = "Unknown"
+		name = "Unknown" #if face is not recognized, then print Unknown
 
 		# check to see if we have found a match
 		if True in matches:
@@ -95,20 +81,35 @@ while True:
 			# of votes (note: in the event of an unlikely tie Python
 			# will select first entry in the dictionary)
 			name = max(counts, key=counts.get)
-			
+
+			#Current Date and Time Data
+			currentTime = datetime.datetime.now()
+			ts = currentTime.strftime("%H:%M:%S")
+			day = datetime.date.today()
+
+			#Final Recognition Time
+			finTime = time.time()
+
+			#Calculate time difference
+			deltTime = finTime - initTime
+
+			#Creating a temporary dataset for a recognized face
+			tempData = {
+        		"Name": [name],
+        		"Attendance Time": [ts],
+        		"Date": [day],
+				"Recognition Time":[deltTime]
+    			}
+			tempDF = pd.DataFrame(tempData)
+
+			#logging names
+			attLogDF = pd.concat([attLogDF, tempDF])
+
 			#If someone in your dataset is identified, print their name on the screen
 			if currentname != name:
 				currentname = name
 				print(currentname)
-				#Take a picture to send in the email
-				img_name = "image.jpg"
-				cv2.imwrite(img_name, frame)
-				print('Taking a picture.')
-				
-				#Now send me an email to let me know who is at the door
-				request = send_message(name)
-				print ('Status Code: '+format(request.status_code)) #200 status code means email sent successfully
-				
+
 		# update the list of names
 		names.append(name)
 
@@ -125,8 +126,20 @@ while True:
 	cv2.imshow("Facial Recognition is Running", frame)
 	key = cv2.waitKey(1) & 0xFF
 
-	# if the `q` key was pressed, break from the loop
+	# quit when 'q' key is pressed
 	if key == ord("q"):
+		print(attLogDF)
+		# Reorders the columns (this my not be needed but for some reason in testing the column order would get mirrored)
+		attLogDF = attLogDF.reindex(columns=['Name', 'Recognition Time', 'Attendance Time', 'Date'])
+		# Deletes duplicate names (Im pretty sure well want to have the sorting done in another script)
+		#attLogDF = attLogDF.drop_duplicates(subset=['Name'], keep='first')
+		# Sorts the name column by alphabetical order to change to sorting based on time change attLogDF.columns[1]	
+		attLogDF.sort_values(attLogDF.columns[1],axis=0,inplace=True)
+		# Prints data out to the CSV file
+		attLogDF.to_csv(abspath + 'FaceReqData.csv', index=False)
+		attLogDF.to_csv(abspath + "flaskserve/" + 'FaceReqData.csv', index=False)
+		
+		time.sleep(2)
 		break
 
 	# update the FPS counter

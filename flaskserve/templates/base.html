@@ -1,0 +1,26 @@
+<!doctype html>
+<title>{% block title %}{% endblock %} - Attendance</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<nav>
+  <h1><a>Attendance Data</a></h1>
+  <ul>
+  </ul>
+</nav>
+<html>
+  <header>
+    <div>
+    </div>
+  </header>
+    <body>
+      <div>
+        <p class="body">{{ table | safe }}</p>
+      </div>
+    </body>
+</html>
+<!doctype html>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<nav>
+  <a id="button" href ="{{url_for('download')}}">Download</a>
+</nav>
+<section class="content">
+</section>

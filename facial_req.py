@@ -1,16 +1,19 @@
-#! /usr/bin/python
-
-# import the necessary packages
 from imutils.video import VideoStream
 from imutils.video import FPS
+import cv2
 import face_recognition
 import imutils
+import os
+import datetime
+import csv
+import pandas as pd
 import pickle
 import time
-import cv2
 
+abspath = os.path.dirname(os.path.abspath(__file__)) + "/"
 #Initialize 'currentname' to trigger only when a new person is identified.
 currentname = "unknown"
+
 #Determine faces from encodings.pickle file model created from train_model.py
 encodingsP = "encodings.pickle"
 
@@ -20,11 +23,18 @@ print("[INFO] loading encodings + face detector...")
 data = pickle.loads(open(encodingsP, "rb").read())
 
 # initialize the video stream and allow the camera sensor to warm up
-# Set the ser to the followng
-# src = 0 : for the build in single web cam, could be your laptop webcam
-# src = 2 : I had to set it to 2 inorder to use the USB webcam attached to my laptop
-#vs = VideoStream(src=2,framerate=10).start()
-vs = VideoStream(usePiCamera=True).start()
+vs = VideoStream(src=0,framerate=10).start()
+
+# Create column headers
+attLog = {
+    "Name": [],
+    "Attendance Time": [],
+    "Date": []
+}
+
+#Creating Dataframe 
+attLogDF = pd.DataFrame(attLog)
+
 time.sleep(2.0)
 
 # start the FPS counter
@@ -69,6 +79,22 @@ while True:
 			# will select first entry in the dictionary)
 			name = max(counts, key=counts.get)
 
+			#Current Date and Time Data
+			currentTime = datetime.datetime.now()
+			ts = currentTime.strftime("%H:%M:%S")
+			day = datetime.date.today()
+
+			#Creating a temporary dataset for a recognized face
+			tempData = {
+        		"Name": [name],
+        		"Attendance Time": [ts],
+        		"Date": [day]
+    			}
+			tempDF = pd.DataFrame(tempData)
+
+			#logging names
+			attLogDF = pd.concat([attLogDF, tempDF])
+
 			#If someone in your dataset is identified, print their name on the screen
 			if currentname != name:
 				currentname = name
@@ -92,6 +118,18 @@ while True:
 
 	# quit when 'q' key is pressed
 	if key == ord("q"):
+		print(attLogDF)
+		# Reorders the columns (this my not be needed but for some reason in testing the column order would get mirrored)
+		attLogDF = attLogDF.reindex(columns=['Name', 'Attendance Time', 'Date'])
+		# Deletes duplicate names (Im pretty sure well want to have the sorting done in another script)
+		attLogDF = attLogDF.drop_duplicates(subset=['Name'], keep='first')
+		# Sorts the name column by alphabetical order to change to sorting based on time change attLogDF.columns[1]	
+		attLogDF.sort_values(attLogDF.columns[0],axis=0,inplace=True)
+		# Prints data out to the CSV file
+		attLogDF.to_csv(abspath + 'FaceReqData.csv', index=False)
+		attLogDF.to_csv(abspath + "flaskserve/" + 'FaceReqData.csv', index=False)
+		
+		time.sleep(2)
 		break
 
 	# update the FPS counter
