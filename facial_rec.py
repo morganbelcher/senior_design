@@ -20,10 +20,11 @@ GPIO.setup(23,GPIO.OUT) #red
 GPIO.setup(24,GPIO.OUT) #green
 
 #Initialize 'currentname' to trigger only when a new person is identified.
-while(True):
-    currentname = "unknown"
-    GPIO.setup(23,GPIO.OUT)
-    time.sleep(1)
+#while(True):
+    #currentname = "unknown"
+    # Turn Red LED on
+    #GPIO.setup(23,GPIO.OUT)
+    #time.sleep(1)
     
 #Determine faces from encodings.pickle file model created from train_model.py
 encodingsP = "encodings.pickle"

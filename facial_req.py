@@ -10,6 +10,21 @@ import pandas as pd
 import pickle
 import time
 
+import RPi.GPIO as GPIO
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.setup(23,GPIO.OUT) #red
+GPIO.setup(24,GPIO.OUT) #green
+
+
+#while(True):
+    #currentname = "unknown"
+    # Turn Red LED on
+    #GPIO.setup(23,GPIO.OUT)
+    #time.sleep(1)
+    
+
 abspath = os.path.dirname(os.path.abspath(__file__)) + "/"
 #Initialize 'currentname' to trigger only when a new person is identified.
 currentname = "unknown"
@@ -65,12 +80,12 @@ while True:
 			# find the indexes of all matched faces then initialize a
 			# dictionary to count the total number of times each face
 			# was matched
-			matchedIdxs = [i for (i, b) in enumerate(matches) if b]
+			matchedIDs = [i for (i, b) in enumerate(matches) if b]
 			counts = {}
 
 			# loop over the matched indexes and maintain a count for
 			# each recognized face face
-			for i in matchedIdxs:
+			for i in matchedIDs:
 				name = data["names"][i]
 				counts[name] = counts.get(name, 0) + 1
 
@@ -99,7 +114,11 @@ while True:
 			if currentname != name:
 				currentname = name
 				print(currentname)
-
+                # Turns on LED when match
+                GPIO.setup(24,GPIO.OUT)
+                # Wait one second for LED to flash green
+                time.sleep(1)
+                
 		# update the list of names
 		names.append(name)
 
@@ -118,6 +137,7 @@ while True:
 
 	# quit when 'q' key is pressed
 	if key == ord("q"):
+    
 		print(attLogDF)
 		# Reorders the columns (this my not be needed but for some reason in testing the column order would get mirrored)
 		attLogDF = attLogDF.reindex(columns=['Name', 'Attendance Time', 'Date'])
